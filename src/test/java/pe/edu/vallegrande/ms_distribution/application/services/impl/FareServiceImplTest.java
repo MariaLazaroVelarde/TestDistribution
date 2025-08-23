@@ -38,7 +38,7 @@ public class FareServiceImplTest {
      */
     @Test
     void saveF_ShouldCreateFare_WhenRequestIsValid() {
-        System.out.println("➡️ Iniciando prueba: Creando taria válida");
+        System.out.println("➡️ Iniciando prueba: Creando tarifa válida");
         // Arrange - Construimos la solicitud
         FareCreateRequest request = FareCreateRequest.builder()
                 .organizationId("6896b2ecf3e398570ffd99d3")

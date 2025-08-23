@@ -1,8 +1,8 @@
 -------------------------------------------------------------------------------
 Test set: pe.edu.vallegrande.ms_distribution.application.services.impl.FareServiceImplTest
 -------------------------------------------------------------------------------
-Tests run: 2, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 0.119 s <<< FAILURE! -- in pe.edu.vallegrande.ms_distribution.application.services.impl.FareServiceImplTest
-pe.edu.vallegrande.ms_distribution.application.services.impl.FareServiceImplTest.saveF_ShouldReturnError_WhenFareCodeAlreadyExists -- Time elapsed: 0.020 s <<< FAILURE!
+Tests run: 2, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 1.867 s <<< FAILURE! -- in pe.edu.vallegrande.ms_distribution.application.services.impl.FareServiceImplTest
+pe.edu.vallegrande.ms_distribution.application.services.impl.FareServiceImplTest.saveF_ShouldReturnError_WhenFareCodeAlreadyExists -- Time elapsed: 0.030 s <<< FAILURE!
 java.lang.AssertionError: expectation "expectErrorSatisfies" failed (assertion failed on exception <pe.edu.vallegrande.ms_distribution.infrastructure.exception.CustomException: Fare code already exists>: expected: <Fare code already exists - TAR001> but was: <Fare code already exists>)
 	at reactor.test.MessageFormatter.assertionError(MessageFormatter.java:115)
 	at reactor.test.MessageFormatter.failPrefix(MessageFormatter.java:104)
@@ -30,7 +30,7 @@ java.lang.AssertionError: expectation "expectErrorSatisfies" failed (assertion f
 	at reactor.test.DefaultStepVerifierBuilder$DefaultStepVerifier.verify(DefaultStepVerifierBuilder.java:831)
 	at reactor.test.DefaultStepVerifierBuilder$DefaultStepVerifier.verify(DefaultStepVerifierBuilder.java:823)
 	at pe.edu.vallegrande.ms_distribution.application.services.impl.FareServiceImplTest.saveF_ShouldReturnError_WhenFareCodeAlreadyExists(FareServiceImplTest.java:142)
-	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
 	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
 	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
 	Suppressed: pe.edu.vallegrande.ms_distribution.infrastructure.exception.CustomException: Fare code already exists

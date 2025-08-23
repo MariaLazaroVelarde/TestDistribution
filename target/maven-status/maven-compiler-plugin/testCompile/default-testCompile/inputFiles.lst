@@ -1,2 +1,4 @@
-D:\vg-web-be-distribucion\src\test\java\pe\edu\vallegrande\ms_distribution\application\services\impl\DistributionProgramServiceImplTest.java
-D:\vg-web-be-distribucion\src\test\java\pe\edu\vallegrande\ms_distribution\application\services\impl\FareServiceImplTest.java
+/workspaces/TestDistribution/src/test/java/pe/edu/vallegrande/ms_distribution/application/services/impl/DistributionProgramServiceImplTest.java
+/workspaces/TestDistribution/src/test/java/pe/edu/vallegrande/ms_distribution/application/services/impl/DistributionRouteServiceImplTest.java
+/workspaces/TestDistribution/src/test/java/pe/edu/vallegrande/ms_distribution/application/services/impl/DistributionScheduleServiceImplTest.java
+/workspaces/TestDistribution/src/test/java/pe/edu/vallegrande/ms_distribution/application/services/impl/FareServiceImplTest.java
