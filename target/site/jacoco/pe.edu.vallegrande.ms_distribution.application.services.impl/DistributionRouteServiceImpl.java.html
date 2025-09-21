@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DistributionRouteServiceImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">structure-microservice</a> &gt; <a href="index.source.html" class="el_package">pe.edu.vallegrande.ms_distribution.application.services.impl</a> &gt; <span class="el_source">DistributionRouteServiceImpl.java</span></div><h1>DistributionRouteServiceImpl.java</h1><pre class="source lang-java linenums">package pe.edu.vallegrande.ms_distribution.application.services.impl;
+import java.util.List;
+import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
+import pe.edu.vallegrande.ms_distribution.application.services.DistributionRouteService;
+import pe.edu.vallegrande.ms_distribution.domain.enums.Constants;
+import pe.edu.vallegrande.ms_distribution.domain.models.DistributionRoute;
+import pe.edu.vallegrande.ms_distribution.infrastructure.dto.request.DistributionRouteCreateRequest;
+import pe.edu.vallegrande.ms_distribution.infrastructure.dto.response.DistributionRouteResponse;
+import pe.edu.vallegrande.ms_distribution.infrastructure.exception.CustomException;
+import pe.edu.vallegrande.ms_distribution.infrastructure.repository.DistributionRouteRepository;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+import java.time.Instant;
+
+@Service
+<span class="nc" id="L23">@Slf4j</span>
+<span class="nc" id="L24">public class DistributionRouteServiceImpl implements DistributionRouteService {</span>
+
+    @Autowired
+    private DistributionRouteRepository routeRepository;
+
+    @Override
+    public Flux&lt;DistributionRoute&gt; getAll() {
+<span class="nc" id="L31">        return routeRepository.findAll();</span>
+    }
+
+    @Override
+    public Flux&lt;DistributionRoute&gt; getAllActive() {
+<span class="nc" id="L36">        return routeRepository.findAllByStatus(Constants.ACTIVE.name());</span>
+    }
+
+    @Override
+    public Flux&lt;DistributionRoute&gt; getAllInactive() {
+<span class="nc" id="L41">        return routeRepository.findAllByStatus(Constants.INACTIVE.name());</span>
+    }
+
+    @Override
+    public Mono&lt;DistributionRoute&gt; getById(String id) {
+<span class="nc" id="L46">        return routeRepository.findById(id)</span>
+<span class="nc" id="L47">                .switchIfEmpty(Mono.error(new CustomException(</span>
+<span class="nc" id="L48">                        HttpStatus.NOT_FOUND.value(), &quot;Route not found&quot;, &quot;Route with ID &quot; + id + &quot; does not exist&quot;)));</span>
+    }
+
+ @Override
+public Mono&lt;DistributionRouteResponse&gt; save(DistributionRouteCreateRequest request) {
+<span class="nc" id="L53">    return generateNextRouteCode()</span>
+<span class="nc" id="L54">        .flatMap(generatedCode -&gt; {</span>
+
+            // 👇 Convertimos ZoneEntry a ZoneOrder
+<span class="nc" id="L57">            List&lt;DistributionRoute.ZoneOrder&gt; zoneOrders = request.getZones().stream()</span>
+<span class="nc" id="L58">                    .map(entry -&gt; DistributionRoute.ZoneOrder.builder()</span>
+<span class="nc" id="L59">                            .zoneId(entry.getZoneId())</span>
+<span class="nc" id="L60">                            .order(entry.getOrder())</span>
+<span class="nc" id="L61">                            .estimatedDuration(entry.getEstimatedDuration())</span>
+<span class="nc" id="L62">                            .build())</span>
+<span class="nc" id="L63">                    .collect(Collectors.toList());</span>
+
+<span class="nc" id="L65">            DistributionRoute route = DistributionRoute.builder()</span>
+<span class="nc" id="L66">                    .organizationId(request.getOrganizationId())</span>
+<span class="nc" id="L67">                    .routeCode(generatedCode) // ← Usamos el código generado</span>
+<span class="nc" id="L68">                    .routeName(request.getRouteName())</span>
+<span class="nc" id="L69">                    .zones(zoneOrders)</span>
+<span class="nc" id="L70">                    .totalEstimatedDuration(request.getTotalEstimatedDuration())</span>
+<span class="nc" id="L71">                    .responsibleUserId(request.getResponsibleUserId())</span>
+<span class="nc" id="L72">                    .status(Constants.ACTIVE.name())</span>
+<span class="nc" id="L73">                    .createdAt(Instant.now())</span>
+<span class="nc" id="L74">                    .build();</span>
+
+<span class="nc" id="L76">            return routeRepository.save(route)</span>
+<span class="nc" id="L77">                    .map(saved -&gt; DistributionRouteResponse.builder()</span>
+<span class="nc" id="L78">                            .id(saved.getId())</span>
+<span class="nc" id="L79">                            .organizationId(saved.getOrganizationId())</span>
+<span class="nc" id="L80">                            .routeCode(saved.getRouteCode())</span>
+<span class="nc" id="L81">                            .routeName(saved.getRouteName())</span>
+<span class="nc" id="L82">                            .zones(</span>
+<span class="nc" id="L83">                                    saved.getZones().stream()</span>
+<span class="nc" id="L84">                                            .map(z -&gt; DistributionRouteResponse.ZoneDetail.builder()</span>
+<span class="nc" id="L85">                                                    .zoneId(z.getZoneId())</span>
+<span class="nc" id="L86">                                                    .order(z.getOrder())</span>
+<span class="nc" id="L87">                                                    .estimatedDuration(z.getEstimatedDuration())</span>
+<span class="nc" id="L88">                                                    .build())</span>
+<span class="nc" id="L89">                                            .collect(Collectors.toList())</span>
+                            )
+<span class="nc" id="L91">                            .totalEstimatedDuration(saved.getTotalEstimatedDuration())</span>
+<span class="nc" id="L92">                            .responsibleUserId(saved.getResponsibleUserId())</span>
+<span class="nc" id="L93">                            .status(saved.getStatus())</span>
+<span class="nc" id="L94">                            .createdAt(saved.getCreatedAt())</span>
+<span class="nc" id="L95">                            .build());</span>
+        });
+}
+
+private Mono&lt;String&gt; generateNextRouteCode() {
+<span class="nc" id="L100">    return routeRepository.findTopByOrderByRouteCodeDesc()</span>
+<span class="nc" id="L101">            .map(last -&gt; {</span>
+<span class="nc" id="L102">                String lastCode = last.getRouteCode(); // Ej: &quot;RUT005&quot;</span>
+<span class="nc" id="L103">                int number = Integer.parseInt(lastCode.replace(&quot;RUT&quot;, &quot;&quot;));</span>
+<span class="nc" id="L104">                return String.format(&quot;RUT%03d&quot;, number + 1);</span>
+            })
+<span class="nc" id="L106">            .defaultIfEmpty(&quot;RUT001&quot;);</span>
+}
+
+
+    @Override
+    public Mono&lt;DistributionRoute&gt; update(String id, DistributionRoute route) {
+<span class="nc" id="L112">        return routeRepository.findById(id)</span>
+<span class="nc" id="L113">                .switchIfEmpty(Mono.error(new CustomException(</span>
+<span class="nc" id="L114">                        HttpStatus.NOT_FOUND.value(), &quot;Route not found&quot;, &quot;Cannot update non-existent route with id &quot; + id)))</span>
+<span class="nc" id="L115">                .flatMap(existing -&gt; {</span>
+<span class="nc" id="L116">                    existing.setRouteName(route.getRouteName());</span>
+<span class="nc" id="L117">                    existing.setZones(route.getZones());</span>
+<span class="nc" id="L118">                    existing.setTotalEstimatedDuration(route.getTotalEstimatedDuration());</span>
+<span class="nc" id="L119">                    existing.setResponsibleUserId(route.getResponsibleUserId());</span>
+<span class="nc" id="L120">                    return routeRepository.save(existing);</span>
+                });
+    }
+
+    @Override
+    public Mono&lt;Void&gt; delete(String id) {
+<span class="nc" id="L126">        return routeRepository.findById(id)</span>
+<span class="nc" id="L127">                .switchIfEmpty(Mono.error(new CustomException(</span>
+<span class="nc" id="L128">                        HttpStatus.NOT_FOUND.value(), &quot;Route not found&quot;, &quot;Cannot delete non-existent route with id &quot; + id)))</span>
+<span class="nc" id="L129">                .flatMap(routeRepository::delete);</span>
+    }
+
+    @Override
+    public Mono&lt;DistributionRoute&gt; activate(String id) {
+<span class="nc" id="L134">        return changeStatus(id, Constants.ACTIVE.name());</span>
+    }
+
+    @Override
+    public Mono&lt;DistributionRoute&gt; deactivate(String id) {
+<span class="nc" id="L139">        return changeStatus(id, Constants.INACTIVE.name());</span>
+    }
+
+    private Mono&lt;DistributionRoute&gt; changeStatus(String id, String status) {
+<span class="nc" id="L143">        return routeRepository.findById(id)</span>
+<span class="nc" id="L144">                .switchIfEmpty(Mono.error(new CustomException(</span>
+<span class="nc" id="L145">                        HttpStatus.NOT_FOUND.value(), &quot;Route not found&quot;, &quot;Cannot change status of non-existent route with id &quot; + id)))</span>
+<span class="nc" id="L146">                .flatMap(route -&gt; {</span>
+<span class="nc" id="L147">                    route.setStatus(status);</span>
+<span class="nc" id="L148">                    return routeRepository.save(route);</span>
+                });
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

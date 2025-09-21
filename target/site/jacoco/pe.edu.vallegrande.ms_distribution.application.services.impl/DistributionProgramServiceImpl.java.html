@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DistributionProgramServiceImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">structure-microservice</a> &gt; <a href="index.source.html" class="el_package">pe.edu.vallegrande.ms_distribution.application.services.impl</a> &gt; <span class="el_source">DistributionProgramServiceImpl.java</span></div><h1>DistributionProgramServiceImpl.java</h1><pre class="source lang-java linenums">package pe.edu.vallegrande.ms_distribution.application.services.impl;
+
+import lombok.RequiredArgsConstructor;
+import pe.edu.vallegrande.ms_distribution.application.services.DistributionProgramService;
+import pe.edu.vallegrande.ms_distribution.domain.enums.Constants;
+import pe.edu.vallegrande.ms_distribution.domain.models.DistributionProgram;
+import pe.edu.vallegrande.ms_distribution.infrastructure.dto.request.DistributionProgramCreateRequest;
+import pe.edu.vallegrande.ms_distribution.infrastructure.dto.response.DistributionProgramResponse;
+import pe.edu.vallegrande.ms_distribution.infrastructure.exception.CustomException;
+import pe.edu.vallegrande.ms_distribution.infrastructure.repository.DistributionProgramRepository;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+
+@Service
+@RequiredArgsConstructor
+public class DistributionProgramServiceImpl implements DistributionProgramService {
+
+    private final DistributionProgramRepository programRepository;
+    private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern(&quot;yyyy-MM-dd&quot;);
+
+    @Override
+    public Flux&lt;DistributionProgramResponse&gt; getAll() {
+<span class="nc" id="L31">        return programRepository.findAll()</span>
+<span class="nc" id="L32">                .map(this::toResponse);</span>
+    }
+
+    @Override
+    public Mono&lt;DistributionProgramResponse&gt; getById(String id) {
+<span class="nc" id="L37">        return programRepository.findById(id)</span>
+<span class="nc" id="L38">                .switchIfEmpty(Mono.error(new CustomException(</span>
+<span class="nc" id="L39">                        HttpStatus.NOT_FOUND.value(), &quot;Not found&quot;, &quot;Program with ID &quot; + id + &quot; not found&quot;)))</span>
+<span class="nc" id="L40">                .map(this::toResponse);</span>
+    }
+
+    @Override
+    public Mono&lt;DistributionProgramResponse&gt; save(DistributionProgramCreateRequest request) {
+<span class="fc" id="L45">        return generateNextProgramCode()</span>
+<span class="fc" id="L46">                .flatMap(generatedCode -&gt; {</span>
+<span class="fc" id="L47">                    DistributionProgram program = DistributionProgram.builder()</span>
+<span class="fc" id="L48">                            .programCode(generatedCode)</span>
+<span class="fc" id="L49">                            .scheduleId(request.getScheduleId())</span>
+<span class="fc" id="L50">                            .routeId(request.getRouteId())</span>
+<span class="fc" id="L51">                            .zoneId(request.getZoneId())</span>
+<span class="fc" id="L52">                            .organizationId(request.getOrganizationId())</span>
+<span class="fc" id="L53">                            .streetId(request.getStreetId())</span>
+<span class="fc" id="L54">                            .programDate(LocalDate.parse(request.getProgramDate(), dateFormatter))</span>
+<span class="fc" id="L55">                            .plannedStartTime(request.getPlannedStartTime())</span>
+<span class="fc" id="L56">                            .plannedEndTime(request.getPlannedEndTime())</span>
+<span class="fc" id="L57">                            .actualStartTime(request.getActualStartTime())</span>
+<span class="fc" id="L58">                            .actualEndTime(request.getActualEndTime())</span>
+<span class="fc" id="L59">                            .status(request.getStatus())</span>
+<span class="fc" id="L60">                            .responsibleUserId(request.getResponsibleUserId())</span>
+<span class="fc" id="L61">                            .observations(request.getObservations())</span>
+<span class="fc" id="L62">                            .createdAt(Instant.now())</span>
+<span class="fc" id="L63">                            .build();</span>
+
+<span class="fc" id="L65">                    return programRepository.save(program)</span>
+<span class="fc" id="L66">                            .map(this::toResponse);</span>
+                });
+    }
+
+    private static final String PROGRAM_PREFIX = &quot;PROG&quot;;
+
+    private Mono&lt;String&gt; generateNextProgramCode() {
+<span class="fc" id="L73">        return programRepository.findTopByOrderByProgramCodeDesc()</span>
+<span class="fc" id="L74">                .map(last -&gt; {</span>
+<span class="nc" id="L75">                    String lastCode = last.getProgramCode(); // Ej: &quot;PROG001&quot;</span>
+<span class="nc" id="L76">                    int number = 0;</span>
+                    try {
+<span class="nc" id="L78">                        number = Integer.parseInt(lastCode.replace(PROGRAM_PREFIX, &quot;&quot;));</span>
+<span class="nc" id="L79">                    } catch (NumberFormatException e) {</span>
+                        // Ignorar si no es numérico
+<span class="nc" id="L81">                    }</span>
+<span class="nc" id="L82">                    return String.format(PROGRAM_PREFIX + &quot;%03d&quot;, number + 1);</span>
+                })
+<span class="fc" id="L84">                .defaultIfEmpty(PROGRAM_PREFIX + &quot;001&quot;);</span>
+    }
+
+    @Override
+    public Mono&lt;DistributionProgramResponse&gt; update(String id, DistributionProgramCreateRequest request) {
+<span class="nc" id="L89">        return programRepository.findById(id)</span>
+<span class="nc" id="L90">                .switchIfEmpty(Mono.error(new CustomException(</span>
+<span class="nc" id="L91">                        HttpStatus.NOT_FOUND.value(), &quot;Not found&quot;, &quot;Program with ID &quot; + id + &quot; not found&quot;)))</span>
+<span class="nc" id="L92">                .flatMap(existing -&gt; {</span>
+<span class="nc" id="L93">                    existing.setOrganizationId(request.getOrganizationId());</span>
+<span class="nc" id="L94">                    existing.setZoneId(request.getZoneId());</span>
+<span class="nc" id="L95">                    existing.setStreetId(request.getStreetId());</span>
+<span class="nc" id="L96">                    existing.setPlannedStartTime(request.getPlannedStartTime());</span>
+<span class="nc" id="L97">                    existing.setPlannedEndTime(request.getPlannedEndTime());</span>
+<span class="nc" id="L98">                    existing.setActualStartTime(request.getActualStartTime());</span>
+<span class="nc" id="L99">                    existing.setActualEndTime(request.getActualEndTime());</span>
+<span class="nc" id="L100">                    existing.setStatus(request.getStatus());</span>
+<span class="nc" id="L101">                    existing.setObservations(request.getObservations());</span>
+<span class="nc" id="L102">                    existing.setResponsibleUserId(request.getResponsibleUserId());</span>
+<span class="nc" id="L103">                    return programRepository.save(existing);</span>
+                })
+<span class="nc" id="L105">                .map(this::toResponse);</span>
+    }
+
+    @Override
+    public Mono&lt;Void&gt; delete(String id) {
+<span class="nc" id="L110">        return programRepository.findById(id)</span>
+<span class="nc" id="L111">                .switchIfEmpty(Mono.error(new CustomException(</span>
+<span class="nc" id="L112">                        HttpStatus.NOT_FOUND.value(), &quot;Not found&quot;, &quot;Program with ID &quot; + id + &quot; not found&quot;)))</span>
+<span class="nc" id="L113">                .flatMap(programRepository::delete);</span>
+    }
+
+    @Override
+    public Mono&lt;DistributionProgramResponse&gt; activate(String id) {
+<span class="nc" id="L118">        return changeStatus(id, Constants.ACTIVE.name());</span>
+    }
+
+    @Override
+    public Mono&lt;DistributionProgramResponse&gt; desactivate(String id) {
+<span class="nc" id="L123">        return changeStatus(id, Constants.INACTIVE.name());</span>
+    }
+
+    @Override
+    public Mono&lt;DistributionProgramResponse&gt; changeStatus(String id, String status) {
+<span class="nc" id="L128">        return programRepository.findById(id)</span>
+<span class="nc" id="L129">                .switchIfEmpty(Mono.error(new CustomException(</span>
+<span class="nc" id="L130">                        HttpStatus.NOT_FOUND.value(), &quot;Not found&quot;, &quot;Program with ID &quot; + id + &quot; not found&quot;)))</span>
+<span class="nc" id="L131">                .flatMap(program -&gt; {</span>
+<span class="nc" id="L132">                    program.setStatus(status);</span>
+<span class="nc" id="L133">                    return programRepository.save(program);</span>
+                })
+<span class="nc" id="L135">                .map(this::toResponse);</span>
+    }
+
+    // Mapeo de entidad a DTO
+    private DistributionProgramResponse toResponse(DistributionProgram program) {
+<span class="fc" id="L140">        return DistributionProgramResponse.builder()</span>
+<span class="fc" id="L141">                .id(program.getId())</span>
+<span class="fc" id="L142">                .organizationId(program.getOrganizationId())</span>
+<span class="fc" id="L143">                .zoneId(program.getZoneId())</span>
+<span class="fc" id="L144">                .streetId(program.getStreetId())</span>
+<span class="fc" id="L145">                .programCode(program.getProgramCode())</span>
+<span class="fc" id="L146">                .scheduleId(program.getScheduleId())</span>
+<span class="fc" id="L147">                .routeId(program.getRouteId())</span>
+<span class="pc bpc" id="L148" title="1 of 2 branches missed.">                .programDate(program.getProgramDate() != null ? program.getProgramDate().format(dateFormatter) : null)</span>
+<span class="fc" id="L149">                .plannedStartTime(program.getPlannedStartTime())</span>
+<span class="fc" id="L150">                .plannedEndTime(program.getPlannedEndTime())</span>
+<span class="fc" id="L151">                .actualStartTime(program.getActualStartTime())</span>
+<span class="fc" id="L152">                .actualEndTime(program.getActualEndTime())</span>
+<span class="fc" id="L153">                .status(program.getStatus())</span>
+<span class="fc" id="L154">                .responsibleUserId(program.getResponsibleUserId())</span>
+<span class="fc" id="L155">                .observations(program.getObservations())</span>
+<span class="pc bpc" id="L156" title="1 of 2 branches missed.">                .createdAt(program.getCreatedAt() != null ? program.getCreatedAt().toString() : null)</span>
+<span class="fc" id="L157">                .build();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

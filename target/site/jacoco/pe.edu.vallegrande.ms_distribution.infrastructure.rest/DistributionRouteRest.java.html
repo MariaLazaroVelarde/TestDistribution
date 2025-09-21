@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DistributionRouteRest.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">structure-microservice</a> &gt; <a href="index.source.html" class="el_package">pe.edu.vallegrande.ms_distribution.infrastructure.rest</a> &gt; <span class="el_source">DistributionRouteRest.java</span></div><h1>DistributionRouteRest.java</h1><pre class="source lang-java linenums">package pe.edu.vallegrande.ms_distribution.infrastructure.rest;
+
+import lombok.AllArgsConstructor;
+import pe.edu.vallegrande.ms_distribution.application.services.DistributionRouteService;
+import pe.edu.vallegrande.ms_distribution.domain.models.DistributionRoute;
+import pe.edu.vallegrande.ms_distribution.infrastructure.dto.ErrorMessage;
+import pe.edu.vallegrande.ms_distribution.infrastructure.dto.ResponseDto;
+import pe.edu.vallegrande.ms_distribution.infrastructure.dto.request.DistributionRouteCreateRequest;
+import pe.edu.vallegrande.ms_distribution.infrastructure.dto.response.DistributionRouteResponse;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+
+import reactor.core.publisher.Mono;
+
+import java.util.List;
+
+@RestController
+@RequestMapping(&quot;/api/v2/routes&quot;)
+@AllArgsConstructor
+public class DistributionRouteRest {
+
+    private final DistributionRouteService routeService;
+
+    @GetMapping
+    public Mono&lt;ResponseDto&lt;List&lt;DistributionRoute&gt;&gt;&gt; getAll() {
+<span class="nc" id="L27">        return routeService.getAll()</span>
+<span class="nc" id="L28">                .collectList()</span>
+<span class="nc" id="L29">                .map(routes -&gt; new ResponseDto&lt;&gt;(true, routes));</span>
+    }
+
+    @GetMapping(&quot;/active&quot;)
+    public Mono&lt;ResponseDto&lt;List&lt;DistributionRoute&gt;&gt;&gt; getAllActive() {
+<span class="nc" id="L34">        return routeService.getAllActive()</span>
+<span class="nc" id="L35">                .collectList()</span>
+<span class="nc" id="L36">                .map(routes -&gt; new ResponseDto&lt;&gt;(true, routes));</span>
+    }
+
+    @GetMapping(&quot;/inactive&quot;)
+    public Mono&lt;ResponseDto&lt;List&lt;DistributionRoute&gt;&gt;&gt; getAllInactive() {
+<span class="nc" id="L41">        return routeService.getAllInactive()</span>
+<span class="nc" id="L42">                .collectList()</span>
+<span class="nc" id="L43">                .map(routes -&gt; new ResponseDto&lt;&gt;(true, routes));</span>
+    }
+
+    @GetMapping(&quot;/{id}&quot;)
+    public Mono&lt;ResponseDto&lt;DistributionRoute&gt;&gt; getById(@PathVariable String id) {
+<span class="nc" id="L48">        return routeService.getById(id)</span>
+<span class="nc" id="L49">                .map(route -&gt; new ResponseDto&lt;&gt;(true, route))</span>
+<span class="nc" id="L50">                .onErrorResume(e -&gt; Mono.just(new ResponseDto&lt;&gt;(false,</span>
+<span class="nc" id="L51">                        new ErrorMessage(HttpStatus.NOT_FOUND.value(), &quot;Route not found&quot;, e.getMessage()))));</span>
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public Mono&lt;ResponseDto&lt;DistributionRouteResponse&gt;&gt; create(@RequestBody DistributionRouteCreateRequest request) {
+<span class="nc" id="L57">        return routeService.save(request)</span>
+<span class="nc" id="L58">                .map(saved -&gt; new ResponseDto&lt;&gt;(true, saved))</span>
+<span class="nc" id="L59">                .onErrorResume(e -&gt; Mono.just(new ResponseDto&lt;&gt;(false,</span>
+<span class="nc" id="L60">                        new ErrorMessage(HttpStatus.BAD_REQUEST.value(), &quot;Validation error&quot;, e.getMessage()))));</span>
+    }
+
+    @PutMapping(&quot;/{id}&quot;)
+    public Mono&lt;ResponseDto&lt;DistributionRoute&gt;&gt; update(@PathVariable String id, @RequestBody DistributionRoute route) {
+<span class="nc" id="L65">        return routeService.update(id, route)</span>
+<span class="nc" id="L66">                .map(updated -&gt; new ResponseDto&lt;&gt;(true, updated))</span>
+<span class="nc" id="L67">                .onErrorResume(e -&gt; Mono.just(new ResponseDto&lt;&gt;(false,</span>
+<span class="nc" id="L68">                        new ErrorMessage(HttpStatus.BAD_REQUEST.value(), &quot;Update failed&quot;, e.getMessage()))));</span>
+    }
+
+    @DeleteMapping(&quot;/{id}&quot;)
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public Mono&lt;ResponseDto&lt;Object&gt;&gt; delete(@PathVariable String id) {
+<span class="nc" id="L74">        return routeService.delete(id)</span>
+<span class="nc" id="L75">                .then(Mono.just(new ResponseDto&lt;&gt;(true, null)))</span>
+<span class="nc" id="L76">                .onErrorResume(e -&gt; Mono.just(new ResponseDto&lt;&gt;(false,</span>
+<span class="nc" id="L77">                        new ErrorMessage(HttpStatus.BAD_REQUEST.value(), &quot;Delete failed&quot;, e.getMessage()))));</span>
+    }
+
+    @PatchMapping(&quot;/{id}/activate&quot;)
+    public Mono&lt;ResponseDto&lt;DistributionRoute&gt;&gt; activate(@PathVariable String id) {
+<span class="nc" id="L82">        return routeService.activate(id)</span>
+<span class="nc" id="L83">                .map(route -&gt; new ResponseDto&lt;&gt;(true, route))</span>
+<span class="nc" id="L84">                .onErrorResume(e -&gt; Mono.just(new ResponseDto&lt;&gt;(false,</span>
+<span class="nc" id="L85">                        new ErrorMessage(HttpStatus.BAD_REQUEST.value(), &quot;Activation failed&quot;, e.getMessage()))));</span>
+    }
+
+    @PatchMapping(&quot;/{id}/deactivate&quot;)
+    public Mono&lt;ResponseDto&lt;DistributionRoute&gt;&gt; deactivate(@PathVariable String id) {
+<span class="nc" id="L90">        return routeService.deactivate(id)</span>
+<span class="nc" id="L91">                .map(route -&gt; new ResponseDto&lt;&gt;(true, route))</span>
+<span class="nc" id="L92">                .onErrorResume(e -&gt; Mono.just(new ResponseDto&lt;&gt;(false,</span>
+<span class="nc" id="L93">                        new ErrorMessage(HttpStatus.BAD_REQUEST.value(), &quot;Deactivation failed&quot;, e.getMessage()))));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

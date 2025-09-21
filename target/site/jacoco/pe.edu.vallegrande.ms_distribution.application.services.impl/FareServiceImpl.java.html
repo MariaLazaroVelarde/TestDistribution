@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FareServiceImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">structure-microservice</a> &gt; <a href="index.source.html" class="el_package">pe.edu.vallegrande.ms_distribution.application.services.impl</a> &gt; <span class="el_source">FareServiceImpl.java</span></div><h1>FareServiceImpl.java</h1><pre class="source lang-java linenums">package pe.edu.vallegrande.ms_distribution.application.services.impl;
+
+import lombok.extern.slf4j.Slf4j;
+import pe.edu.vallegrande.ms_distribution.application.services.FareService;
+import pe.edu.vallegrande.ms_distribution.domain.enums.Constants;
+import pe.edu.vallegrande.ms_distribution.domain.models.Fare;
+import pe.edu.vallegrande.ms_distribution.infrastructure.dto.request.FareCreateRequest;
+import pe.edu.vallegrande.ms_distribution.infrastructure.dto.response.FareResponse;
+import pe.edu.vallegrande.ms_distribution.infrastructure.exception.CustomException;
+import pe.edu.vallegrande.ms_distribution.infrastructure.repository.FareRepository;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+import java.time.Instant;
+
+@Service
+<span class="fc" id="L22">@Slf4j</span>
+<span class="fc" id="L23">public class FareServiceImpl implements FareService {</span>
+
+    @Autowired
+    private FareRepository fareRepository;
+
+    @Override
+    public Flux&lt;Fare&gt; getAllF() {
+<span class="nc" id="L30">        return fareRepository.findAll()</span>
+<span class="nc" id="L31">                .doOnNext(fare -&gt; log.info(&quot;Fare retrieved: {}&quot;, fare));</span>
+    }
+
+    @Override
+    public Flux&lt;Fare&gt; getAllActiveF() {
+<span class="nc" id="L36">        return fareRepository.findAllByStatus(Constants.ACTIVE.name());</span>
+    }
+
+    @Override
+    public Flux&lt;Fare&gt; getAllInactiveF() {
+<span class="nc" id="L41">        return fareRepository.findAllByStatus(Constants.INACTIVE.name());</span>
+    }
+
+    @Override
+    public Mono&lt;Fare&gt; getByIdFMono(String id) {
+<span class="nc" id="L46">        return fareRepository.findById(id)</span>
+<span class="nc" id="L47">                .switchIfEmpty(Mono.error(new CustomException(</span>
+<span class="nc" id="L48">                        HttpStatus.NOT_FOUND.value(),</span>
+                        &quot;Fare not found&quot;,
+                        &quot;The requested fare with id &quot; + id + &quot; was not found&quot;)));
+    }
+
+    @Override
+    public Mono&lt;FareResponse&gt; saveF(FareCreateRequest request) {
+<span class="fc" id="L55">        return generateNextFareCode() // ← Aquí lo usamos</span>
+<span class="fc" id="L56">                .flatMap(generatedCode -&gt; fareRepository.existsByFareCode(generatedCode)</span>
+<span class="fc" id="L57">                        .flatMap(exists -&gt; {</span>
+<span class="pc bpc" id="L58" title="1 of 2 branches missed.">                            if (exists) {</span>
+<span class="nc" id="L59">                                return Mono.error(new CustomException(</span>
+<span class="nc" id="L60">                                        HttpStatus.BAD_REQUEST.value(),</span>
+                                        &quot;Fare code already exists&quot;,
+                                        &quot;The fare code &quot; + generatedCode + &quot; is already registered&quot;));
+                            }
+
+<span class="fc" id="L65">                            Fare fare = Fare.builder()</span>
+<span class="fc" id="L66">                                    .organizationId(request.getOrganizationId())</span>
+<span class="fc" id="L67">                                    .fareCode(generatedCode) // ← Se usa el código generado</span>
+<span class="fc" id="L68">                                    .fareName(request.getFareName())</span>
+<span class="fc" id="L69">                                    .fareType(request.getFareType())</span>
+<span class="fc" id="L70">                                    .fareAmount(request.getFareAmount())</span>
+<span class="fc" id="L71">                                    .status(Constants.ACTIVE.name())</span>
+<span class="fc" id="L72">                                    .createdAt(Instant.now())</span>
+<span class="fc" id="L73">                                    .build();</span>
+
+<span class="fc" id="L75">                            return fareRepository.save(fare)</span>
+<span class="fc" id="L76">                                    .map(savedFare -&gt; FareResponse.builder()</span>
+<span class="fc" id="L77">                                            .id(savedFare.getId())</span>
+<span class="fc" id="L78">                                            .organizationId(savedFare.getOrganizationId())</span>
+<span class="fc" id="L79">                                            .fareCode(savedFare.getFareCode())</span>
+<span class="fc" id="L80">                                            .fareName(savedFare.getFareName())</span>
+<span class="fc" id="L81">                                            .fareType(savedFare.getFareType())</span>
+<span class="fc" id="L82">                                            .fareAmount(savedFare.getFareAmount())</span>
+<span class="fc" id="L83">                                            .status(savedFare.getStatus())</span>
+<span class="fc" id="L84">                                            .createdAt(savedFare.getCreatedAt())</span>
+<span class="fc" id="L85">                                            .build());</span>
+                        }));
+    }
+
+    private static final String FARE_PREFIX = &quot;TAR&quot;;
+
+    private Mono&lt;String&gt; generateNextFareCode() {
+<span class="fc" id="L92">        return fareRepository.findTopByOrderByFareCodeDesc()</span>
+<span class="fc" id="L93">                .map(last -&gt; {</span>
+<span class="nc" id="L94">                    String lastCode = last.getFareCode(); // ej. &quot;TAR003&quot;</span>
+<span class="nc" id="L95">                    int number = 0;</span>
+                    try {
+<span class="nc" id="L97">                        number = Integer.parseInt(lastCode.replace(FARE_PREFIX, &quot;&quot;));</span>
+<span class="nc" id="L98">                    } catch (NumberFormatException e) {</span>
+                        // Si el código no sigue el patrón, asumimos 0
+<span class="nc" id="L100">                    }</span>
+<span class="nc" id="L101">                    return String.format(FARE_PREFIX + &quot;%03d&quot;, number + 1);</span>
+                })
+<span class="fc" id="L103">                .defaultIfEmpty(FARE_PREFIX + &quot;001&quot;);</span>
+    }
+
+    @Override
+    public Mono&lt;Fare&gt; updateF(String id, Fare fare) {
+<span class="nc" id="L108">        return fareRepository.findById(id)</span>
+<span class="nc" id="L109">                .switchIfEmpty(Mono.error(new CustomException(</span>
+<span class="nc" id="L110">                        HttpStatus.NOT_FOUND.value(),</span>
+                        &quot;Fare not found&quot;,
+                        &quot;Cannot update non-existent fare with id &quot; + id)))
+<span class="nc" id="L113">                .flatMap(existingFare -&gt; {</span>
+<span class="nc" id="L114">                    existingFare.setOrganizationId(fare.getOrganizationId());</span>
+<span class="nc" id="L115">                    existingFare.setFareName(fare.getFareName());</span>
+<span class="nc" id="L116">                    existingFare.setFareType(fare.getFareType());</span>
+<span class="nc" id="L117">                    existingFare.setFareAmount(fare.getFareAmount());</span>
+<span class="nc" id="L118">                    return fareRepository.save(existingFare);</span>
+                });
+    }
+
+    @Override
+    public Mono&lt;Void&gt; deleteF(String id) {
+<span class="nc" id="L124">        return fareRepository.findById(id)</span>
+<span class="nc" id="L125">                .switchIfEmpty(Mono.error(new CustomException(</span>
+<span class="nc" id="L126">                        HttpStatus.NOT_FOUND.value(),</span>
+                        &quot;Fare not found&quot;,
+                        &quot;Cannot delete non-existent fare with id &quot; + id)))
+<span class="nc" id="L129">                .flatMap(fareRepository::delete);</span>
+    }
+
+    @Override
+    public Mono&lt;Fare&gt; activateF(String id) {
+<span class="nc" id="L134">        return changeStatus(id, Constants.ACTIVE.name());</span>
+    }
+
+    @Override
+    public Mono&lt;Fare&gt; deactivateF(String id) {
+<span class="nc" id="L139">        return fareRepository.findById(id)</span>
+<span class="nc" id="L140">                .switchIfEmpty(Mono.error(CustomException.notFound(&quot;Fare&quot;, id)))</span>
+<span class="nc" id="L141">                .flatMap(fare -&gt; {</span>
+<span class="nc" id="L142">                    fare.setStatus(Constants.INACTIVE.name());</span>
+<span class="nc" id="L143">                    return fareRepository.save(fare);</span>
+                });
+    }
+
+    private Mono&lt;Fare&gt; changeStatus(String id, String status) {
+<span class="nc" id="L148">        return fareRepository.findById(id)</span>
+<span class="nc" id="L149">                .switchIfEmpty(Mono.error(CustomException.notFound(&quot;Fare&quot;, id)))</span>
+<span class="nc" id="L150">                .flatMap(fare -&gt; {</span>
+<span class="nc" id="L151">                    System.out.println(&quot;➡️ Estado actual: &quot; + fare.getStatus());</span>
+<span class="nc" id="L152">                    fare.setStatus(status);</span>
+<span class="nc" id="L153">                    System.out.println(&quot;🔁 Estado nuevo: &quot; + fare.getStatus());</span>
+<span class="nc" id="L154">                    return fareRepository.save(fare)</span>
+<span class="nc" id="L155">                            .doOnNext(saved -&gt; System.out.println(&quot;✅ Guardado: &quot; + saved.getStatus()));</span>
+                })
+<span class="nc" id="L157">                .doOnError(e -&gt; System.err.println(&quot;❌ Error al cambiar estado: &quot; + e.getMessage()));</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GlobalExceptionHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">structure-microservice</a> &gt; <a href="index.source.html" class="el_package">pe.edu.vallegrande.ms_distribution.infrastructure.exception</a> &gt; <span class="el_source">GlobalExceptionHandler.java</span></div><h1>GlobalExceptionHandler.java</h1><pre class="source lang-java linenums">package pe.edu.vallegrande.ms_distribution.infrastructure.exception;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import pe.edu.vallegrande.ms_distribution.infrastructure.dto.ErrorMessage;
+import pe.edu.vallegrande.ms_distribution.infrastructure.dto.ResponseDto;
+
+@RestControllerAdvice
+<span class="nc" id="L11">public class GlobalExceptionHandler {</span>
+
+    @ExceptionHandler(CustomException.class)
+    public ResponseEntity&lt;ResponseDto&lt;Object&gt;&gt; handleCustomException(CustomException ex) {
+<span class="nc" id="L15">        ErrorMessage errorMessage = ex.getErrorMessage();</span>
+<span class="nc" id="L16">        ResponseDto&lt;Object&gt; response = new ResponseDto&lt;&gt;(false, errorMessage);</span>
+<span class="nc" id="L17">        return ResponseEntity.status(errorMessage.getErrorCode()).body(response);</span>
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity&lt;ResponseDto&lt;Object&gt;&gt; handleGenericException(Exception ex) {
+<span class="nc bnc" id="L22" title="All 2 branches missed.">        int statusCode = (ex instanceof RuntimeException) ? 500 : 400;</span>
+
+<span class="nc" id="L24">        ErrorMessage errorMessage = new ErrorMessage(</span>
+                statusCode,
+                &quot;Error interno del servidor&quot;,
+<span class="nc" id="L27">                ex.getMessage()</span>
+        );
+<span class="nc" id="L29">        ResponseDto&lt;Object&gt; response = new ResponseDto&lt;&gt;(false, errorMessage);</span>
+<span class="nc" id="L30">        return ResponseEntity.status(statusCode).body(response);</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

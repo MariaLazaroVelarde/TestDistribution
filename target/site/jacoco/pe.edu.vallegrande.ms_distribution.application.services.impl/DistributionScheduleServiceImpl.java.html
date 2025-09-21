@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DistributionScheduleServiceImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">structure-microservice</a> &gt; <a href="index.source.html" class="el_package">pe.edu.vallegrande.ms_distribution.application.services.impl</a> &gt; <span class="el_source">DistributionScheduleServiceImpl.java</span></div><h1>DistributionScheduleServiceImpl.java</h1><pre class="source lang-java linenums">package pe.edu.vallegrande.ms_distribution.application.services.impl;
+
+import lombok.extern.slf4j.Slf4j;
+import pe.edu.vallegrande.ms_distribution.application.services.DistributionScheduleService;
+import pe.edu.vallegrande.ms_distribution.domain.enums.Constants;
+import pe.edu.vallegrande.ms_distribution.domain.models.DistributionSchedule;
+import pe.edu.vallegrande.ms_distribution.infrastructure.dto.request.DistributionScheduleCreateRequest;
+import pe.edu.vallegrande.ms_distribution.infrastructure.dto.response.DistributionScheduleResponse;
+import pe.edu.vallegrande.ms_distribution.infrastructure.exception.CustomException;
+import pe.edu.vallegrande.ms_distribution.infrastructure.repository.DistributionScheduleRepository;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+import java.time.Instant;
+
+@Service
+<span class="nc" id="L22">@Slf4j</span>
+<span class="nc" id="L23">public class DistributionScheduleServiceImpl implements DistributionScheduleService {</span>
+
+    @Autowired
+    private DistributionScheduleRepository repository;
+
+    @Override
+    public Flux&lt;DistributionSchedule&gt; getAll() {
+<span class="nc" id="L30">        return repository.findAll();</span>
+    }
+
+    @Override
+    public Flux&lt;DistributionSchedule&gt; getAllActive() {
+<span class="nc" id="L35">        return repository.findAllByStatus(Constants.ACTIVE.name());</span>
+    }
+
+    @Override
+    public Flux&lt;DistributionSchedule&gt; getAllInactive() {
+<span class="nc" id="L40">        return repository.findAllByStatus(Constants.INACTIVE.name());</span>
+    }
+
+    @Override
+    public Mono&lt;DistributionSchedule&gt; getById(String id) {
+<span class="nc" id="L45">        return repository.findById(id)</span>
+<span class="nc" id="L46">                .switchIfEmpty(Mono.error(new CustomException(</span>
+<span class="nc" id="L47">                        HttpStatus.NOT_FOUND.value(),</span>
+                        &quot;Schedule not found&quot;,
+                        &quot;No schedule found with id &quot; + id)));
+    }
+
+@Override
+public Mono&lt;DistributionScheduleResponse&gt; save(DistributionScheduleCreateRequest request) {
+<span class="nc" id="L54">    return generateNextScheduleCode() // ← usamos el generador</span>
+<span class="nc" id="L55">        .flatMap(generatedCode -&gt;</span>
+<span class="nc" id="L56">            repository.existsByScheduleCode(generatedCode)</span>
+<span class="nc" id="L57">                .flatMap(exists -&gt; {</span>
+<span class="nc bnc" id="L58" title="All 2 branches missed.">                    if (exists) {</span>
+<span class="nc" id="L59">                        return Mono.error(new CustomException(</span>
+<span class="nc" id="L60">                                HttpStatus.BAD_REQUEST.value(),</span>
+                                &quot;Schedule code already exists&quot;,
+                                &quot;Schedule code &quot; + generatedCode + &quot; already exists&quot;));
+                    }
+
+<span class="nc" id="L65">                    DistributionSchedule schedule = DistributionSchedule.builder()</span>
+<span class="nc" id="L66">                            .organizationId(request.getOrganizationId())</span>
+<span class="nc" id="L67">                            .scheduleCode(generatedCode) // ← usamos el código generado</span>
+<span class="nc" id="L68">                            .zoneId(request.getZoneId())</span>
+<span class="nc" id="L69">                            .scheduleName(request.getScheduleName())</span>
+<span class="nc" id="L70">                            .daysOfWeek(request.getDaysOfWeek())</span>
+<span class="nc" id="L71">                            .startTime(request.getStartTime())</span>
+<span class="nc" id="L72">                            .endTime(request.getEndTime())</span>
+<span class="nc" id="L73">                            .durationHours(request.getDurationHours())</span>
+<span class="nc" id="L74">                            .status(Constants.ACTIVE.name())</span>
+<span class="nc" id="L75">                            .createdAt(Instant.now())</span>
+<span class="nc" id="L76">                            .build();</span>
+
+<span class="nc" id="L78">                    return repository.save(schedule)</span>
+<span class="nc" id="L79">                            .map(saved -&gt; DistributionScheduleResponse.builder()</span>
+<span class="nc" id="L80">                                    .id(saved.getId())</span>
+<span class="nc" id="L81">                                    .organizationId(saved.getOrganizationId())</span>
+<span class="nc" id="L82">                                    .scheduleCode(saved.getScheduleCode())</span>
+<span class="nc" id="L83">                                    .scheduleName(saved.getScheduleName())</span>
+<span class="nc" id="L84">                                    .zoneId(saved.getZoneId())</span>
+<span class="nc" id="L85">                                    .daysOfWeek(saved.getDaysOfWeek())</span>
+<span class="nc" id="L86">                                    .startTime(saved.getStartTime())</span>
+<span class="nc" id="L87">                                    .endTime(saved.getEndTime())</span>
+<span class="nc" id="L88">                                    .durationHours(saved.getDurationHours())</span>
+<span class="nc" id="L89">                                    .status(saved.getStatus())</span>
+<span class="nc" id="L90">                                    .createdAt(saved.getCreatedAt())</span>
+<span class="nc" id="L91">                                    .build());</span>
+                })
+        );
+}
+
+
+    private static final String SCHEDULE_PREFIX = &quot;HOR&quot;;
+
+private Mono&lt;String&gt; generateNextScheduleCode() {
+<span class="nc" id="L100">    return repository.findTopByOrderByScheduleCodeDesc()</span>
+<span class="nc" id="L101">            .map(last -&gt; {</span>
+<span class="nc" id="L102">                String lastCode = last.getScheduleCode(); // ej. HOR007</span>
+<span class="nc" id="L103">                int number = 0;</span>
+                try {
+<span class="nc" id="L105">                    number = Integer.parseInt(lastCode.replace(SCHEDULE_PREFIX, &quot;&quot;));</span>
+<span class="nc" id="L106">                } catch (NumberFormatException ignored) {}</span>
+<span class="nc" id="L107">                return String.format(SCHEDULE_PREFIX + &quot;%03d&quot;, number + 1);</span>
+            })
+<span class="nc" id="L109">            .defaultIfEmpty(SCHEDULE_PREFIX + &quot;001&quot;);</span>
+}
+
+
+    @Override
+    public Mono&lt;DistributionSchedule&gt; update(String id, DistributionSchedule schedule) {
+<span class="nc" id="L115">        return repository.findById(id)</span>
+<span class="nc" id="L116">                .switchIfEmpty(Mono.error(new CustomException(</span>
+<span class="nc" id="L117">                        HttpStatus.NOT_FOUND.value(),</span>
+                        &quot;Schedule not found&quot;,
+                        &quot;No schedule found with id &quot; + id)))
+<span class="nc" id="L120">                .flatMap(existing -&gt; {</span>
+<span class="nc" id="L121">                    existing.setScheduleName(schedule.getScheduleName());</span>
+<span class="nc" id="L122">                    existing.setDaysOfWeek(schedule.getDaysOfWeek());</span>
+<span class="nc" id="L123">                    existing.setStartTime(schedule.getStartTime());</span>
+<span class="nc" id="L124">                    existing.setEndTime(schedule.getEndTime());</span>
+<span class="nc" id="L125">                    existing.setDurationHours(schedule.getDurationHours());</span>
+<span class="nc" id="L126">                    return repository.save(existing);</span>
+                });
+    }
+
+    @Override
+    public Mono&lt;Void&gt; delete(String id) {
+<span class="nc" id="L132">        return repository.findById(id)</span>
+<span class="nc" id="L133">                .switchIfEmpty(Mono.error(new CustomException(</span>
+<span class="nc" id="L134">                        HttpStatus.NOT_FOUND.value(),</span>
+                        &quot;Schedule not found&quot;,
+                        &quot;Cannot delete schedule with id &quot; + id)))
+<span class="nc" id="L137">                .flatMap(repository::delete);</span>
+    }
+
+    @Override
+    public Mono&lt;DistributionSchedule&gt; activate(String id) {
+<span class="nc" id="L142">        return changeStatus(id, Constants.ACTIVE.name());</span>
+    }
+
+    @Override
+    public Mono&lt;DistributionSchedule&gt; deactivate(String id) {
+<span class="nc" id="L147">        return changeStatus(id, Constants.INACTIVE.name());</span>
+    }
+
+    private Mono&lt;DistributionSchedule&gt; changeStatus(String id, String status) {
+<span class="nc" id="L151">        return repository.findById(id)</span>
+<span class="nc" id="L152">                .switchIfEmpty(Mono.error(new CustomException(</span>
+<span class="nc" id="L153">                        HttpStatus.NOT_FOUND.value(),</span>
+                        &quot;Schedule not found&quot;,
+                        &quot;Cannot change status of schedule with id &quot; + id)))
+<span class="nc" id="L156">                .flatMap(schedule -&gt; {</span>
+<span class="nc" id="L157">                    schedule.setStatus(status);</span>
+<span class="nc" id="L158">                    return repository.save(schedule);</span>
+                });
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
