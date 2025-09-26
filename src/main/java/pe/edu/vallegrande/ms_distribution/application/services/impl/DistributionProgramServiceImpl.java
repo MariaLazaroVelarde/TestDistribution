@@ -23,8 +23,12 @@ import java.time.format.DateTimeFormatter;
 @RequiredArgsConstructor
 public class DistributionProgramServiceImpl implements DistributionProgramService {
 
+    private static final String DATE_PATTERN = "yyyy-MM-dd";
+    private static final String PROGRAM_PREFIX = "PROG";
+    private static final String PROGRAM_NOT_FOUND_MESSAGE = "Program with ID %s not found";
+    
     private final DistributionProgramRepository programRepository;
-    private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern(DATE_PATTERN);
 
     @Override
     public Flux<DistributionProgramResponse> getAll() {
@@ -36,7 +40,7 @@ public class DistributionProgramServiceImpl implements DistributionProgramServic
     public Mono<DistributionProgramResponse> getById(String id) {
         return programRepository.findById(id)
                 .switchIfEmpty(Mono.error(new CustomException(
-                        HttpStatus.NOT_FOUND.value(), "Not found", "Program with ID " + id + " not found")))
+                        HttpStatus.NOT_FOUND.value(), "Not found", String.format(PROGRAM_NOT_FOUND_MESSAGE, id))))
                 .map(this::toResponse);
     }
 
@@ -67,49 +71,53 @@ public class DistributionProgramServiceImpl implements DistributionProgramServic
                 });
     }
 
-    private static final String PROGRAM_PREFIX = "PROG";
-
     private Mono<String> generateNextProgramCode() {
         return programRepository.findTopByOrderByProgramCodeDesc()
-                .map(last -> {
-                    String lastCode = last.getProgramCode(); // Ej: "PROG001"
-                    int number = 0;
-                    try {
-                        number = Integer.parseInt(lastCode.replace(PROGRAM_PREFIX, ""));
-                    } catch (NumberFormatException e) {
-                        // Ignorar si no es numérico
-                    }
-                    return String.format(PROGRAM_PREFIX + "%03d", number + 1);
-                })
+                .map(this::extractNextProgramCode)
                 .defaultIfEmpty(PROGRAM_PREFIX + "001");
+    }
+    
+    private String extractNextProgramCode(DistributionProgram lastProgram) {
+        String lastCode = lastProgram.getProgramCode();
+        int number = 0;
+        try {
+            String numericPart = lastCode.replace(PROGRAM_PREFIX, "");
+            number = Integer.parseInt(numericPart);
+        } catch (NumberFormatException e) {
+            // Si no es numérico, empezar desde 1
+            number = 0;
+        }
+        return String.format("%s%03d", PROGRAM_PREFIX, number + 1);
     }
 
     @Override
     public Mono<DistributionProgramResponse> update(String id, DistributionProgramCreateRequest request) {
         return programRepository.findById(id)
                 .switchIfEmpty(Mono.error(new CustomException(
-                        HttpStatus.NOT_FOUND.value(), "Not found", "Program with ID " + id + " not found")))
-                .flatMap(existing -> {
-                    existing.setOrganizationId(request.getOrganizationId());
-                    existing.setZoneId(request.getZoneId());
-                    existing.setStreetId(request.getStreetId());
-                    existing.setPlannedStartTime(request.getPlannedStartTime());
-                    existing.setPlannedEndTime(request.getPlannedEndTime());
-                    existing.setActualStartTime(request.getActualStartTime());
-                    existing.setActualEndTime(request.getActualEndTime());
-                    existing.setStatus(request.getStatus());
-                    existing.setObservations(request.getObservations());
-                    existing.setResponsibleUserId(request.getResponsibleUserId());
-                    return programRepository.save(existing);
-                })
+                        HttpStatus.NOT_FOUND.value(), "Not found", String.format(PROGRAM_NOT_FOUND_MESSAGE, id))))
+                .flatMap(existing -> updateProgramFields(existing, request))
                 .map(this::toResponse);
+    }
+    
+    private Mono<DistributionProgram> updateProgramFields(DistributionProgram existing, DistributionProgramCreateRequest request) {
+        existing.setOrganizationId(request.getOrganizationId());
+        existing.setZoneId(request.getZoneId());
+        existing.setStreetId(request.getStreetId());
+        existing.setPlannedStartTime(request.getPlannedStartTime());
+        existing.setPlannedEndTime(request.getPlannedEndTime());
+        existing.setActualStartTime(request.getActualStartTime());
+        existing.setActualEndTime(request.getActualEndTime());
+        existing.setStatus(request.getStatus());
+        existing.setObservations(request.getObservations());
+        existing.setResponsibleUserId(request.getResponsibleUserId());
+        return programRepository.save(existing);
     }
 
     @Override
     public Mono<Void> delete(String id) {
         return programRepository.findById(id)
                 .switchIfEmpty(Mono.error(new CustomException(
-                        HttpStatus.NOT_FOUND.value(), "Not found", "Program with ID " + id + " not found")))
+                        HttpStatus.NOT_FOUND.value(), "Not found", String.format(PROGRAM_NOT_FOUND_MESSAGE, id))))
                 .flatMap(programRepository::delete);
     }
 
@@ -127,12 +135,14 @@ public class DistributionProgramServiceImpl implements DistributionProgramServic
     public Mono<DistributionProgramResponse> changeStatus(String id, String status) {
         return programRepository.findById(id)
                 .switchIfEmpty(Mono.error(new CustomException(
-                        HttpStatus.NOT_FOUND.value(), "Not found", "Program with ID " + id + " not found")))
-                .flatMap(program -> {
-                    program.setStatus(status);
-                    return programRepository.save(program);
-                })
+                        HttpStatus.NOT_FOUND.value(), "Not found", String.format(PROGRAM_NOT_FOUND_MESSAGE, id))))
+                .flatMap(program -> updateProgramStatus(program, status))
                 .map(this::toResponse);
+    }
+    
+    private Mono<DistributionProgram> updateProgramStatus(DistributionProgram program, String status) {
+        program.setStatus(status);
+        return programRepository.save(program);
     }
 
     // Mapeo de entidad a DTO

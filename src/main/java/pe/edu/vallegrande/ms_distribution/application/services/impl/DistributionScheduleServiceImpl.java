@@ -1,15 +1,16 @@
 package pe.edu.vallegrande.ms_distribution.application.services.impl;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import pe.edu.vallegrande.ms_distribution.application.services.DistributionScheduleService;
 import pe.edu.vallegrande.ms_distribution.domain.enums.Constants;
 import pe.edu.vallegrande.ms_distribution.domain.models.DistributionSchedule;
 import pe.edu.vallegrande.ms_distribution.infrastructure.dto.request.DistributionScheduleCreateRequest;
+import pe.edu.vallegrande.ms_distribution.infrastructure.dto.request.DistributionScheduleUpdateRequest;
 import pe.edu.vallegrande.ms_distribution.infrastructure.dto.response.DistributionScheduleResponse;
 import pe.edu.vallegrande.ms_distribution.infrastructure.exception.CustomException;
 import pe.edu.vallegrande.ms_distribution.infrastructure.repository.DistributionScheduleRepository;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -20,10 +21,10 @@ import java.time.Instant;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class DistributionScheduleServiceImpl implements DistributionScheduleService {
 
-    @Autowired
-    private DistributionScheduleRepository repository;
+    private final DistributionScheduleRepository repository;
 
     @Override
     public Flux<DistributionSchedule> getAll() {
@@ -111,18 +112,14 @@ private Mono<String> generateNextScheduleCode() {
 
 
     @Override
-    public Mono<DistributionSchedule> update(String id, DistributionSchedule schedule) {
+    public Mono<DistributionSchedule> update(String id, DistributionScheduleUpdateRequest request) {
         return repository.findById(id)
-                .switchIfEmpty(Mono.error(new CustomException(
-                        HttpStatus.NOT_FOUND.value(),
-                        "Schedule not found",
-                        "No schedule found with id " + id)))
                 .flatMap(existing -> {
-                    existing.setScheduleName(schedule.getScheduleName());
-                    existing.setDaysOfWeek(schedule.getDaysOfWeek());
-                    existing.setStartTime(schedule.getStartTime());
-                    existing.setEndTime(schedule.getEndTime());
-                    existing.setDurationHours(schedule.getDurationHours());
+                    existing.setRouteId(request.getRouteId());
+                    existing.setDayOfWeek(request.getDayOfWeek());
+                    existing.setStartTime(request.getStartTime());
+                    existing.setEndTime(request.getEndTime());
+                    existing.setEstimatedDuration(request.getEstimatedDuration());
                     return repository.save(existing);
                 });
     }

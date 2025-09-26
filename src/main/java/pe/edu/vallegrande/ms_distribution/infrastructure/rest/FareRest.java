@@ -6,11 +6,13 @@ import pe.edu.vallegrande.ms_distribution.domain.models.Fare;
 import pe.edu.vallegrande.ms_distribution.infrastructure.dto.ErrorMessage;
 import pe.edu.vallegrande.ms_distribution.infrastructure.dto.ResponseDto;
 import pe.edu.vallegrande.ms_distribution.infrastructure.dto.request.FareCreateRequest;
+import pe.edu.vallegrande.ms_distribution.infrastructure.dto.request.FareUpdateRequest;
 import pe.edu.vallegrande.ms_distribution.infrastructure.dto.response.FareResponse;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
@@ -67,15 +69,15 @@ public class FareRest {
     }
 
     @PutMapping("/{id}")
-    public Mono<ResponseDto<Fare>> update(@PathVariable String id, @RequestBody Fare fare) {
-        return fareService.updateF(id, fare)
+    public Mono<ResponseDto<Fare>> update(@PathVariable String id, @Valid @RequestBody FareUpdateRequest request) {
+        return fareService.updateF(id, request)
                 .map(updatedFare -> new ResponseDto<>(true, updatedFare))
                 .onErrorResume(e -> Mono.just(
                         new ResponseDto<>(false,
                                 new ErrorMessage(HttpStatus.BAD_REQUEST.value(),
                                         "Update failed",
                                         e.getMessage()))));
-    }
+        }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)

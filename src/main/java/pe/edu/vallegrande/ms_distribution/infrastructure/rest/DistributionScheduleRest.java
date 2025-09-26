@@ -6,11 +6,13 @@ import pe.edu.vallegrande.ms_distribution.domain.models.DistributionSchedule;
 import pe.edu.vallegrande.ms_distribution.infrastructure.dto.ErrorMessage;
 import pe.edu.vallegrande.ms_distribution.infrastructure.dto.ResponseDto;
 import pe.edu.vallegrande.ms_distribution.infrastructure.dto.request.DistributionScheduleCreateRequest;
+import pe.edu.vallegrande.ms_distribution.infrastructure.dto.request.DistributionScheduleUpdateRequest;
 import pe.edu.vallegrande.ms_distribution.infrastructure.dto.response.DistributionScheduleResponse;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
@@ -67,14 +69,14 @@ public class DistributionScheduleRest {
     }
 
     @PutMapping("/{id}")
-    public Mono<ResponseDto<DistributionSchedule>> update(@PathVariable String id, @RequestBody DistributionSchedule schedule) {
-        return service.update(id, schedule)
-                .map(updated -> new ResponseDto<>(true, updated))
-                .onErrorResume(e -> Mono.just(
-                        new ResponseDto<>(false,
-                                new ErrorMessage(HttpStatus.BAD_REQUEST.value(),
-                                        "Update failed",
-                                        e.getMessage()))));
+    public Mono<ResponseDto<DistributionSchedule>> update(@PathVariable String id, @Valid @RequestBody DistributionScheduleUpdateRequest request) {
+        return service.update(id, request)
+            .map(updated -> new ResponseDto<>(true, updated))
+            .onErrorResume(e -> Mono.just(
+                    new ResponseDto<>(false,
+                            new ErrorMessage(HttpStatus.BAD_REQUEST.value(),
+                                    "Update failed",
+                                    e.getMessage()))));
     }
 
     @DeleteMapping("/{id}")

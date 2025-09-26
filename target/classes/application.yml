@@ -1,0 +1,51 @@
+# MONGO_DATABASE
+spring:
+  application:
+    name: ${NOMBRE_MICROSERVICIO:structure-microservice}
+  data:
+    mongodb:
+      uri: mongodb+srv://${MONGO_USERNAME:sistemajass}:${MONGO_PASSWORD:ZC7O1Ok40SwkfEje}@sistemajass.jn6cpoz.mongodb.net/${MONGO_DATABASE:JASS_DIGITAL}?retryWrites=true&w=majority
+  web:
+    resources:
+      cache:
+        period: 0
+
+server:
+     port: 8086
+     forward-headers-strategy: framework
+cors:
+     allowed-origins: "*"
+     allowed-methods: GET,POST,PUT,DELETE,PATCH,OPTIONS,HEAD
+     allowed-headers: "*"
+     allow-credentials: true
+     max-age: 3600
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    urls:
+      - url: /v3/api-docs
+        name: API V1
+  api-docs:
+    path: /v3/api-docs
+  default-produces-media-type: application/json
+  paths-to-match: /api/**
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+
+app:
+  name: Water Distribution Microservice
+  description: Microservicio para gestión de distribuciones en el servicio de agua
+  version: 1.0.0s

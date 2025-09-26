@@ -1,0 +1,87 @@
+name: Dependency Security Check
+
+on:
+  schedule:
+    - cron: '0 2 * * 1'  # Ejecutar cada lunes a las 2 AM
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  dependency-check:
+    name: OWASP Dependency Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+    
+    - name: Cache Maven dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+    
+    - name: Run OWASP dependency check
+      run: |
+        mvn org.owasp:dependency-check-maven:check \
+          -Dformat=ALL \
+          -Dformat=HTML \
+          -Dformat=JSON \
+          -DfailBuildOnCVSS=7
+    
+    - name: Upload dependency check report
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: dependency-check-report
+        path: target/dependency-check-report.*
+    
+    - name: Comment PR with security findings
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const path = 'target/dependency-check-report.json';
+          
+          if (fs.existsSync(path)) {
+            const report = JSON.parse(fs.readFileSync(path, 'utf8'));
+            const vulnerabilities = report.dependencies?.filter(dep => dep.vulnerabilities?.length > 0) || [];
+            
+            if (vulnerabilities.length > 0) {
+              let comment = '## 🔒 Security Alert - Vulnerable Dependencies\n\n';
+              comment += `Found ${vulnerabilities.length} dependencies with vulnerabilities:\n\n`;
+              
+              vulnerabilities.forEach(dep => {
+                comment += `### ${dep.fileName}\n`;
+                dep.vulnerabilities.forEach(vuln => {
+                  comment += `- **${vuln.name}**: ${vuln.description}\n`;
+                  comment += `  - CVSS Score: ${vuln.cvssv3?.baseScore || 'N/A'}\n`;
+                  comment += `  - Severity: ${vuln.severity}\n\n`;
+                });
+              });
+              
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            } else {
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: '## ✅ Security Check Passed\n\nNo vulnerable dependencies found!'
+              });
+            }
+          }

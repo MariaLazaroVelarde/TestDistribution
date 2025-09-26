@@ -1,0 +1,6 @@
+projectKey=MicroservicioGestion
+serverUrl=http://localhost:9000
+serverVersion=25.9.0.112764
+dashboardUrl=http://localhost:9000/dashboard?id=MicroservicioGestion
+ceTaskId=6ecfe4ac-bb74-4ca2-a600-90b367431f5f
+ceTaskUrl=http://localhost:9000/api/ce/task?id=6ecfe4ac-bb74-4ca2-a600-90b367431f5f

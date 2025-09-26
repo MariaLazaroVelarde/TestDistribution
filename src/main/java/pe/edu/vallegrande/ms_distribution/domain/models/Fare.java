@@ -26,4 +26,12 @@ public class Fare {
     private BigDecimal fareAmount;
     private String status;
     private Instant createdAt;
+
+    public void setPrice(Double price) {
+        throw new UnsupportedOperationException("Unimplemented method 'setPrice'");
+    }
+    
+    public void setDescription(String description) {
+        throw new UnsupportedOperationException("Unimplemented method 'setDescription'");
+    }
 }

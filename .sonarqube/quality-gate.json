@@ -1,0 +1,32 @@
+{
+  "qualityGate": {
+    "name": "TestDistribution Quality Gate",
+    "conditions": [
+      {
+        "metric": "coverage",
+        "op": "LT",
+        "error": "70"
+      },
+      {
+        "metric": "duplicated_lines_density",
+        "op": "GT",
+        "error": "3"
+      },
+      {
+        "metric": "security_rating",
+        "op": "GT",
+        "error": "1"
+      },
+      {
+        "metric": "reliability_rating",
+        "op": "GT",
+        "error": "1"
+      },
+      {
+        "metric": "maintainability_rating",
+        "op": "GT",
+        "error": "1"
+      }
+    ]
+  }
+}

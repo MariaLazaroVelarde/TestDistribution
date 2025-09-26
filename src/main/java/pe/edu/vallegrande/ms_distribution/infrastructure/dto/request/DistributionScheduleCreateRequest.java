@@ -1,14 +1,13 @@
 package pe.edu.vallegrande.ms_distribution.infrastructure.dto.request;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.List;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class DistributionScheduleCreateRequest {
 
     private String organizationId;

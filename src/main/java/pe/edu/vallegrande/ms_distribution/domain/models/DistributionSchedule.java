@@ -19,14 +19,18 @@ public class DistributionSchedule {
 
     private String organizationId;
     private String scheduleCode;
+    private String routeId;
     private String zoneId;
     private String scheduleName;
 
     private List<String> daysOfWeek;
+    private String dayOfWeek;     // Single day for update operations
     private String startTime;     // formato: "HH:mm"
     private String endTime;       // formato: "HH:mm"
     private int durationHours;
+    private Integer estimatedDuration; // Duration in minutes for update operations
 
     private String status;
     private Instant createdAt;
+    private Instant updatedAt;
 }

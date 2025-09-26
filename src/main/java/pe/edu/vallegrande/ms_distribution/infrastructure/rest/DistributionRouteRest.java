@@ -6,11 +6,13 @@ import pe.edu.vallegrande.ms_distribution.domain.models.DistributionRoute;
 import pe.edu.vallegrande.ms_distribution.infrastructure.dto.ErrorMessage;
 import pe.edu.vallegrande.ms_distribution.infrastructure.dto.ResponseDto;
 import pe.edu.vallegrande.ms_distribution.infrastructure.dto.request.DistributionRouteCreateRequest;
+import pe.edu.vallegrande.ms_distribution.infrastructure.dto.request.DistributionRouteUpdateRequest;
 import pe.edu.vallegrande.ms_distribution.infrastructure.dto.response.DistributionRouteResponse;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
@@ -61,12 +63,15 @@ public class DistributionRouteRest {
     }
 
     @PutMapping("/{id}")
-    public Mono<ResponseDto<DistributionRoute>> update(@PathVariable String id, @RequestBody DistributionRoute route) {
-        return routeService.update(id, route)
+    public Mono<ResponseDto<DistributionRoute>> update(@PathVariable String id, @Valid @RequestBody DistributionRouteUpdateRequest request) {
+        return routeService.update(id, request)
                 .map(updated -> new ResponseDto<>(true, updated))
-                .onErrorResume(e -> Mono.just(new ResponseDto<>(false,
-                        new ErrorMessage(HttpStatus.BAD_REQUEST.value(), "Update failed", e.getMessage()))));
-    }
+                .onErrorResume(e -> Mono.just(
+                        new ResponseDto<>(false,
+                                new ErrorMessage(HttpStatus.BAD_REQUEST.value(),
+                                        "Update failed",
+                                        e.getMessage()))));
+        }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
