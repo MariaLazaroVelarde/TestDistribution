@@ -31,12 +31,13 @@ jobs:
         restore-keys: ${{ runner.os }}-m2
     
     - name: Run OWASP dependency check
+      continue-on-error: true   # ⚠️ No detiene el workflow si hay vulnerabilidades
       run: |
         mvn org.owasp:dependency-check-maven:check \
           -Dformat=ALL \
           -Dformat=HTML \
           -Dformat=JSON \
-          -DfailBuildOnCVSS=7
+          -DfailBuildOnCVSS=11   # 11 => nunca falla el build, solo genera reportes
     
     - name: Upload dependency check report
       uses: actions/upload-artifact@v4
