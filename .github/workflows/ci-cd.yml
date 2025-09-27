@@ -11,314 +11,124 @@ env:
   MAVEN_OPTS: '-Xmx1024m'
 
 jobs:
-  # Job 1: Análisis de código estático y calidad
   code-quality:
     name: Code Quality Analysis
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
       with:
-        fetch-depth: 0  # Necesario para SonarQube
+        fetch-depth: 0
     
-    - name: Set up JDK ${{ env.JAVA_VERSION }}
-      uses: actions/setup-java@v4
+    - uses: actions/setup-java@v4
       with:
         java-version: ${{ env.JAVA_VERSION }}
         distribution: 'temurin'
     
-    - name: Cache Maven dependencies
-      uses: actions/cache@v3
+    - uses: actions/cache@v4
       with:
         path: ~/.m2
         key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
         restore-keys: ${{ runner.os }}-m2
     
-    - name: Run SonarQube analysis
+    - name: Run SonarQube analysis (local)
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       run: |
-        mvn clean compile sonar:sonar \
-          -Dsonar.projectKey=test-distribution \
-          -Dsonar.organization=vallegrande \
-          -Dsonar.host.url=https://sonarcloud.io \
-          -Dsonar.login=$SONAR_TOKEN \
-          -Dsonar.pullrequest.key=${{ github.event.number }} \
-          -Dsonar.pullrequest.branch=${{ github.head_ref }} \
-          -Dsonar.pullrequest.base=${{ github.base_ref }}
+        mvn clean verify sonar:sonar \
+          -Dsonar.projectKey=MicroservicioGestion \
+          -Dsonar.projectName=structure-microservice \
+          -Dsonar.host.url=http://localhost:9000 \
+          -Dsonar.login=$SONAR_TOKEN
 
-  # Job 2: Compilación y pruebas unitarias
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up JDK ${{ env.JAVA_VERSION }}
-      uses: actions/setup-java@v4
+    - uses: actions/checkout@v4
+    - uses: actions/setup-java@v4
       with:
         java-version: ${{ env.JAVA_VERSION }}
         distribution: 'temurin'
-    
-    - name: Cache Maven dependencies
-      uses: actions/cache@v3
+    - uses: actions/cache@v4
       with:
         path: ~/.m2
         key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
         restore-keys: ${{ runner.os }}-m2
     
-    - name: Run unit tests
-      run: |
-        mvn clean test \
-          -Dspring.profiles.active=test \
-          -Dmaven.test.failure.ignore=false
-    
-    - name: Upload test results
-      uses: actions/upload-artifact@v4
+    - run: mvn clean test -Dspring.profiles.active=test
+
+    - uses: actions/upload-artifact@v4
       if: always()
       with:
         name: test-results
         path: target/surefire-reports/
-    
-    - name: Upload test coverage
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: test-coverage
-        path: target/site/jacoco/
 
-  # Job 3: Pruebas parametrizadas
-  parametrized-tests:
-    name: Parametrized Tests
-    runs-on: ubuntu-latest
-    
-    strategy:
-      matrix:
-        participant-type: [ADMIN, OPERATOR, TECHNICIAN, SUPERVISOR, CLIENT]
-        zone: [ZONA_CENTRO, ZONA_NORTE, ZONA_SUR, ZONA_ESTE, ZONA_OESTE]
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up JDK ${{ env.JAVA_VERSION }}
-      uses: actions/setup-java@v4
-      with:
-        java-version: ${{ env.JAVA_VERSION }}
-        distribution: 'temurin'
-    
-    - name: Cache Maven dependencies
-      uses: actions/cache@v3
-      with:
-        path: ~/.m2
-        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-        restore-keys: ${{ runner.os }}-m2
-    
-    - name: Run parametrized tests for ${{ matrix.participant-type }} in ${{ matrix.zone }}
-      run: |
-        mvn test \
-          -Dtest=ParametrizedDistributionProgramTest \
-          -Dspring.profiles.active=test \
-          -Dparticipant.type=${{ matrix.participant-type }} \
-          -Dtest.zone=${{ matrix.zone }}
-
-  # Job 4: Análisis de cobertura con JaCoCo
   coverage-analysis:
     name: Coverage Analysis
     runs-on: ubuntu-latest
-    needs: [unit-tests, parametrized-tests]
+    needs: [unit-tests]
     
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up JDK ${{ env.JAVA_VERSION }}
-      uses: actions/setup-java@v4
+    - uses: actions/checkout@v4
+    - uses: actions/setup-java@v4
       with:
         java-version: ${{ env.JAVA_VERSION }}
         distribution: 'temurin'
-    
-    - name: Cache Maven dependencies
-      uses: actions/cache@v3
+    - uses: actions/cache@v4
       with:
         path: ~/.m2
         key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
         restore-keys: ${{ runner.os }}-m2
     
-    - name: Download test artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: test-results
-        path: target/surefire-reports/
-    
-    - name: Download coverage artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: test-coverage
-        path: target/site/jacoco/
-    
-    - name: Generate JaCoCo report
-      run: |
-        mvn clean test jacoco:report \
-          -Dspring.profiles.active=test
-    
-    - name: Check coverage thresholds
-      run: |
-        mvn jacoco:check \
-          -Djacoco.check.instructionRatio=70 \
-          -Djacoco.check.branchRatio=60 \
-          -Djacoco.check.lineRatio=70 \
-          -Djacoco.check.methodRatio=70 \
-          -Djacoco.check.classRatio=70
-    
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
-      with:
-        file: target/site/jacoco/jacoco.xml
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
-    
-    - name: Comment PR with coverage
-      if: github.event_name == 'pull_request'
-      uses: actions/github-script@v6
-      with:
-        script: |
-          const fs = require('fs');
-          const path = 'target/site/jacoco/index.html';
-          
-          if (fs.existsSync(path)) {
-            const coverage = fs.readFileSync(path, 'utf8');
-            const match = coverage.match(/Total.*?(\d+\.?\d*)%/);
-            const coveragePercent = match ? match[1] : 'N/A';
-            
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `## 📊 Coverage Report
-              
-              **Coverage: ${coveragePercent}%**
-              
-              [View detailed report](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
-              `
-            });
-          }
+    - run: mvn verify jacoco:report jacoco:check
 
-  # Job 5: Construcción y empaquetado
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: coverage-report
+        path: target/site/jacoco/
+
   build:
     name: Build Application
     runs-on: ubuntu-latest
     needs: [code-quality, coverage-analysis]
     
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up JDK ${{ env.JAVA_VERSION }}
-      uses: actions/setup-java@v4
+    - uses: actions/checkout@v4
+    - uses: actions/setup-java@v4
       with:
         java-version: ${{ env.JAVA_VERSION }}
         distribution: 'temurin'
-    
-    - name: Cache Maven dependencies
-      uses: actions/cache@v3
+    - uses: actions/cache@v4
       with:
         path: ~/.m2
         key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
         restore-keys: ${{ runner.os }}-m2
     
-    - name: Build application
-      run: |
-        mvn clean package -DskipTests
-    
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
+    - run: mvn clean package -DskipTests
+
+    - uses: actions/upload-artifact@v4
       with:
         name: application-jar
         path: target/*.jar
 
-  # Job 6: Análisis de seguridad
-  security-scan:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up JDK ${{ env.JAVA_VERSION }}
-      uses: actions/setup-java@v4
-      with:
-        java-version: ${{ env.JAVA_VERSION }}
-        distribution: 'temurin'
-    
-    - name: Run OWASP dependency check
-      continue-on-error: true   # no falla el pipeline
-      run: |
-        mvn org.owasp:dependency-check-maven:check \
-          -Dformat=ALL \
-          -Dformat=HTML \
-          -Dformat=JSON \
-          -DfailBuildOnCVSS=11   # nunca rompe el build
-    
-    - name: Upload security report
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: security-report
-        path: target/dependency-check-report.*
-
-  # Job 7: Despliegue (solo en main)
-  deploy:
-    name: Deploy to Staging
-    runs-on: ubuntu-latest
-    needs: [build, security-scan]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Download build artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: application-jar
-        path: target/
-    
-    - name: Deploy to staging
-      run: |
-        echo "🚀 Deploying to staging environment..."
-        echo "Application built successfully!"
-        echo "Ready for deployment to staging server"
-    
-    - name: Notify deployment
-      if: always()
-      run: |
-        echo "📢 Deployment notification sent"
-        echo "Status: ${{ job.status }}"
-
-  # Job 8: Notificaciones
   notify:
     name: Notify Results
     runs-on: ubuntu-latest
-    needs: [code-quality, unit-tests, parametrized-tests, coverage-analysis, build, security-scan]
+    needs: [code-quality, unit-tests, coverage-analysis, build]
     if: always()
     
     steps:
-    - name: Notify success
-      if: ${{ needs.code-quality.result == 'success' && needs.unit-tests.result == 'success' && needs.coverage-analysis.result == 'success' }}
+    - name: Final notification
       run: |
-        echo "✅ All checks passed successfully!"
-        echo "🎉 Pipeline completed successfully"
-    
-    - name: Notify failure
-      if: ${{ needs.code-quality.result == 'failure' || needs.unit-tests.result == 'failure' || needs.coverage-analysis.result == 'failure' }}
-      run: |
-        echo "❌ Some checks failed"
-        echo "🔍 Please review the failed jobs"
-        # exit 1 eliminado para no romper el pipeline
+        if [[ "${{ needs.code-quality.result }}" == "success" && \
+              "${{ needs.unit-tests.result }}" == "success" && \
+              "${{ needs.coverage-analysis.result }}" == "success" && \
+              "${{ needs.build.result }}" == "success" ]]; then
+          echo "✅ All checks passed successfully!"
+        else
+          echo "❌ Some checks failed"
+          exit 1
+        fi
